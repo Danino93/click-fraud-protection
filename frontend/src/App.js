@@ -14,7 +14,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
 // הגדרת כתובת השרת
-const API_URL = 'http://localhost:3000/api';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 function App({ onLogout }) {
   const [isLoading, setIsLoading] = useState(true);

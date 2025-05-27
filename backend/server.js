@@ -20,9 +20,28 @@ const app = express();
 // הגדרת trust proxy לקבלת IP האמיתי - זה קריטי!
 app.set('trust proxy', true);
 
-// הגדרת CORS מפורטת
+// הגדרת CORS מפורטת - מותאם לפרודקשן
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://ashaf-d.com', 'http://ashaf-d.com'],
+  origin: function (origin, callback) {
+    // רשימת דומיינים מורשים
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001', 
+      'https://ashaf-d.com',
+      'http://ashaf-d.com',
+      // הוסף כאן את הדומיין של הפרונטאנד בוורסל כשתקבל אותו
+      // 'https://your-frontend-app.vercel.app'
+    ];
+    
+    // אפשר גישה ללא origin (לבקשות מאפליקציות מובייל או Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
