@@ -14,7 +14,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
 // הגדרת כתובת השרת
-const API_URL = process.env.REACT_APP_API_URL || '/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://click-fraud-backend.vercel.app/api';
 
 function App({ onLogout }) {
   const [isLoading, setIsLoading] = useState(true);

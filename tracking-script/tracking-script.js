@@ -4,7 +4,7 @@
 
 (function() {
     // 🔧 שנה את הכתובת הזאת לכתובת השרת שלך!
-    const SERVER_URL = 'http://localhost:3000/api'; // ⚠️ שנה ל-IP או דומיין אמיתי בפרודקשן
+    const SERVER_URL = 'https://click-fraud-backend.vercel.app/api'; // ✅ דומיין פרודקשן
     
     // קבלת פרמטרים מה-URL
     const urlParams = new URLSearchParams(window.location.search);

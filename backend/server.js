@@ -36,6 +36,11 @@ app.use(cors({
     // אפשר גישה ללא origin (לבקשות מאפליקציות מובייל או Postman)
     if (!origin) return callback(null, true);
     
+    // בפרודקשן - אפשר גישה מכל מקום (זמנית לבדיקה)
+    if (process.env.NODE_ENV === 'production') {
+      return callback(null, true);
+    }
+    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {

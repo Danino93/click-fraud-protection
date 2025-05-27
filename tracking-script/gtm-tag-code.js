@@ -5,7 +5,7 @@
     
     // הגדרות מותאמות לפרויקט הגנת קליקים מזויפים
     const CONFIG = {
-        serverUrl: 'http://localhost:3000/api/track', // שנה לכתובת השרת שלך כאשר תעלה לאוויר
+        serverUrl: 'https://click-fraud-backend.vercel.app/api/track', // ✅ דומיין פרודקשן
         debug: false, // שנה ל-true לדיבאג
         timeout: 5000, // זמן המתנה לתגובה מהשרת (מילישניות)
         trackingEnabled: true, // ניתן לכיבוי/הפעלה מ-GTM

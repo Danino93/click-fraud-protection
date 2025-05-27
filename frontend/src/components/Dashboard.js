@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './Dashboard.css';
 
-const API_URL = process.env.REACT_APP_API_URL || '/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://click-fraud-backend.vercel.app/api';
 
 function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
@@ -267,7 +267,7 @@ function Dashboard() {
               <span className={`status-indicator ${serverStatus}`}></span>
             </p>
             <small style={{color: '#666', fontSize: '0.8rem'}}>
-              פורט 3000
+              click-fraud-backend.vercel.app
             </small>
           </div>
           
