@@ -33,6 +33,7 @@ function Dashboard() {
       const responses = await Promise.allSettled([
         axios.get(`${API_URL}/clicks`), // כל הקליקים
         axios.get(`${API_URL}/clicks?type=paid`), // רק קליקים ממומנים
+        axios.get(`${API_URL}/clicks?type=organic`), // רק קליקים אורגניים
         axios.get(`${API_URL}/blocked-ips`),
         axios.get(`${API_URL}/detection-rules`),
         axios.get(`${API_URL}/suspicious-clicks`)
@@ -40,13 +41,14 @@ function Dashboard() {
       
       const allClicksData = responses[0].status === 'fulfilled' ? responses[0].value.data : [];
       const paidClicksData = responses[1].status === 'fulfilled' ? responses[1].value.data : [];
-      const blockedData = responses[2].status === 'fulfilled' ? responses[2].value.data : [];
-      const rulesData = responses[3].status === 'fulfilled' ? responses[3].value.data : [];
-      const suspiciousData = responses[4].status === 'fulfilled' ? responses[4].value.data : [];
+      const organicClicksData = responses[2].status === 'fulfilled' ? responses[2].value.data : [];
+      const blockedData = responses[3].status === 'fulfilled' ? responses[3].value.data : [];
+      const rulesData = responses[4].status === 'fulfilled' ? responses[4].value.data : [];
+      const suspiciousData = responses[5].status === 'fulfilled' ? responses[5].value.data : [];
       
       // חישוב קליקים חשודים מהנתונים האמיתיים
       const suspiciousCount = suspiciousData.length || 0;
-      const organicClicks = allClicksData.length - paidClicksData.length;
+      const organicClicks = organicClicksData.length;
       
       setStats({
         totalClicks: allClicksData.length || 0,
@@ -136,6 +138,17 @@ function Dashboard() {
             </div>
           </div>
           
+          <div className="stat-card-modern organic-clicks">
+            <div className="stat-icon">🌱</div>
+            <div className="stat-title">קליקים אורגניים</div>
+            <p className="stat-number-modern">
+              {isLoading ? '...' : stats.organicClicks.toLocaleString()}
+            </p>
+            <div className="stat-change neutral">
+              🌱 תעבורה אורגנית (ללא gclid)
+            </div>
+          </div>
+          
           <div className="stat-card-modern suspicious-clicks">
             <div className="stat-icon">⚠️</div>
             <div className="stat-title">קליקים חשודים</div>
@@ -166,6 +179,17 @@ function Dashboard() {
             </p>
             <div className="stat-change neutral">
               📈 חשודים מתוך כל הקליקים
+            </div>
+          </div>
+          
+          <div className="stat-card-modern suspicious-details">
+            <div className="stat-icon">🔍</div>
+            <div className="stat-title">פירוט חשודים</div>
+            <p className="stat-number-modern">
+              {isLoading ? '...' : `${stats.totalSuspicious} חשודים`}
+            </p>
+            <div className="stat-change neutral">
+              🔍 לחץ על "קליקים חשודים" לפרטים
             </div>
           </div>
         </div>
