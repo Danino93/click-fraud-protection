@@ -1,0 +1,23 @@
+{
+  "name": "gtm-tools",
+  "version": "1.0.0",
+  "description": "כלים גלובליים לניהול Google Tag Manager",
+  "main": "gtm-manager.js",
+  "scripts": {
+    "start": "node gtm-manager.js",
+    "list": "node -e \"const GTM = require('./gtm-manager.js'); const gtm = new GTM(); gtm.initialize().then(() => gtm.listTags());\"",
+    "create-tag": "node -e \"const GTM = require('./gtm-manager.js'); const gtm = new GTM(); gtm.initialize().then(() => gtm.createClickTrackingTag());\"",
+    "help": "node -e \"console.log('\\n🔧 GTM Tools - פקודות זמינות:'); console.log('npm run list - הצגת כל התגים'); console.log('npm run create-tag - יצירת תג מעקב'); console.log('npm start - הפעלת מצב אינטראקטיבי');\""
+  },
+  "dependencies": {
+    "googleapis": "^140.0.1"
+  },
+  "keywords": [
+    "gtm",
+    "google-tag-manager",
+    "automation",
+    "api"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
