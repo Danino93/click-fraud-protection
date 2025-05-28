@@ -84,6 +84,30 @@ function applyDetectionRule(rule, clickData) {
               clickData.user_agent.toLowerCase().includes(keyword)
           );
           
+      // הכללים החדשים שהוספנו
+      case 'rapid_clicks':
+          // בדיקת קליקים מהירים - נבדק אם יש נתונים על קליקים מהירים
+          const rapidClicks = clickData.additional_data?.rapid_clicks_detected || 0;
+          return rapidClicks > parseInt(rule.rule_value);
+          
+      case 'clicks_per_hour':
+          // בדיקת מספר קליקים לשעה
+          const clicksPerHour = clickData.additional_data?.clicks_per_hour || 0;
+          return clicksPerHour > parseInt(rule.rule_value);
+          
+      case 'clicks_per_day':
+          // בדיקת מספר קליקים ליום
+          const clicksPerDay = clickData.additional_data?.clicks_per_day || 0;
+          return clicksPerDay > parseInt(rule.rule_value);
+          
+      case 'conversion_rate':
+          // בדיקת יחס המרה נמוך מדי (חשוד)
+          const conversionRate = clickData.additional_data?.conversion_rate || 0;
+          const minConversionRate = parseFloat(rule.rule_value);
+          // אם יש יותר מ-10 קליקים ויחס ההמרה נמוך מדי - חשוד
+          const totalClicks = clickData.additional_data?.click_count || 0;
+          return totalClicks > 10 && conversionRate < minConversionRate;
+          
       default:
           return false;
   }
@@ -167,6 +191,60 @@ function applyAdvancedDetectionRules(rule, clickData, recentClicks) {
           // בדיקת נטישת טפסים חשודה
           const abandonmentRate = parseFloat(rule.rule_value); // 0.9 = 90%
           return analyzeFormAbandonment(clickData, abandonmentRate);
+          
+      // הכללים החדשים שהוספנו - גרסה מתקדמת
+      case 'multiple_clicks':
+          // בדיקת קליקים מרובים בחלונות זמן שונים
+          const multipleClicks5min = clickData.additional_data?.multiple_clicks_5min || 0;
+          const multipleClicks10min = clickData.additional_data?.multiple_clicks_10min || 0;
+          const multipleClicks30min = clickData.additional_data?.multiple_clicks_30min || 0;
+          const multipleClicksThreshold = parseInt(rule.rule_value);
+          
+          // חשוד אם יש יותר מדי קליקים בכל אחד מחלונות הזמן
+          return multipleClicks5min > multipleClicksThreshold || 
+                 multipleClicks10min > (multipleClicksThreshold * 2) || 
+                 multipleClicks30min > (multipleClicksThreshold * 5);
+          
+      case 'rapid_clicks':
+          // גרסה מתקדמת של זיהוי קליקים מהירים
+          const rapidClicksDetected = clickData.additional_data?.rapid_clicks_detected || 0;
+          const clickPatternVariance = clickData.additional_data?.click_pattern_variance || 1000;
+          const rapidClicksThreshold = parseInt(rule.rule_value);
+          
+          // חשוד אם יש קליקים מהירים ושונות נמוכה בדפוס
+          return rapidClicksDetected > rapidClicksThreshold && clickPatternVariance < 100;
+          
+      case 'clicks_per_hour':
+          // גרסה מתקדמת - בדיקה מול היסטוריה
+          const currentHourClicks = clickData.additional_data?.clicks_per_hour || 0;
+          const avgHourlyClicks = calculateAverageHourlyClicks(clickData.ip_address, recentClicks);
+          const hourlyThreshold = parseInt(rule.rule_value);
+          
+          // חשוד אם חורג מהסף או פי 3 מהממוצע
+          return currentHourClicks > hourlyThreshold || 
+                 (avgHourlyClicks > 0 && currentHourClicks > avgHourlyClicks * 3);
+          
+      case 'clicks_per_day':
+          // גרסה מתקדמת - בדיקה מול היסטוריה יומית
+          const currentDayClicks = clickData.additional_data?.clicks_per_day || 0;
+          const avgDailyClicks = calculateAverageDailyClicks(clickData.ip_address, recentClicks);
+          const dailyThreshold = parseInt(rule.rule_value);
+          
+          // חשוד אם חורג מהסף או פי 2 מהממוצע
+          return currentDayClicks > dailyThreshold || 
+                 (avgDailyClicks > 0 && currentDayClicks > avgDailyClicks * 2);
+          
+      case 'conversion_rate':
+          // גרסה מתקדמת של בדיקת יחס המרה
+          const conversionRate = clickData.additional_data?.conversion_rate || 0;
+          const totalClicks = clickData.additional_data?.click_count || 0;
+          const conversionEvents = clickData.additional_data?.conversion_events || [];
+          const minRate = parseFloat(rule.rule_value);
+          
+          // חשוד אם יש הרבה קליקים, יחס המרה נמוך, ואין אירועי המרה אמיתיים
+          return totalClicks > 20 && 
+                 conversionRate < minRate && 
+                 conversionEvents.length === 0;
           
       default:
           // אם זה כלל בסיסי, נשתמש בפונקציה הרגילה
@@ -515,9 +593,60 @@ function getCountryFromIP(ip) {
   return 'IL'; // ברירת מחדל - ישראל
 }
 
+/**
+ * חישוב ממוצע קליקים שעתי עבור IP
+ */
+function calculateAverageHourlyClicks(ip, recentClicks) {
+    const ipClicks = recentClicks.filter(click => click.ip_address === ip);
+    if (ipClicks.length === 0) return 0;
+    
+    const hourlyGroups = {};
+    ipClicks.forEach(click => {
+        const hour = new Date(click.created_at).getHours();
+        const date = new Date(click.created_at).toDateString();
+        const key = `${date}_${hour}`;
+        
+        if (!hourlyGroups[key]) {
+            hourlyGroups[key] = 0;
+        }
+        hourlyGroups[key]++;
+    });
+    
+    const hourlyTotals = Object.values(hourlyGroups);
+    return hourlyTotals.length > 0 ? 
+           hourlyTotals.reduce((sum, count) => sum + count, 0) / hourlyTotals.length : 0;
+}
+
+/**
+ * חישוב ממוצע קליקים יומי עבור IP
+ */
+function calculateAverageDailyClicks(ip, recentClicks) {
+    const ipClicks = recentClicks.filter(click => click.ip_address === ip);
+    if (ipClicks.length === 0) return 0;
+    
+    const dailyGroups = {};
+    ipClicks.forEach(click => {
+        const date = new Date(click.created_at).toDateString();
+        
+        if (!dailyGroups[date]) {
+            dailyGroups[date] = 0;
+        }
+        dailyGroups[date]++;
+    });
+    
+    const dailyTotals = Object.values(dailyGroups);
+    return dailyTotals.length > 0 ? 
+           dailyTotals.reduce((sum, count) => sum + count, 0) / dailyTotals.length : 0;
+}
+
 module.exports = {
   detectFraudClick,
-  detectAdvancedFraudClick,
   analyzeSuspiciousClicks,
-  calculateRiskScore
+  detectAdvancedFraudClick,
+  calculateRiskScore,
+  isKnownBot,
+  hashUserAgent,
+  getCountryFromIP,
+  calculateAverageHourlyClicks,
+  calculateAverageDailyClicks
 };

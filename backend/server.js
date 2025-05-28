@@ -147,6 +147,28 @@ async function createDefaultDetectionRules() {
         is_active: false,
         created_at: new Date(),
         updated_at: new Date()
+      },
+      // הכללים החדשים שהוספנו
+      {
+        rule_type: 'multiple_clicks',
+        rule_value: '10', // מקסימום 10 קליקים בחלון זמן
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
+      },
+      {
+        rule_type: 'clicks_per_day',
+        rule_value: '200', // מקסימום 200 קליקים ליום
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
+      },
+      {
+        rule_type: 'conversion_rate',
+        rule_value: '0.5', // יחס המרה מינימלי של 0.5%
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
       }
     ];
     

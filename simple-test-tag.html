@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת תג מעקב קליקים</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success { background: rgba(76, 175, 80, 0.3); }
+        .status.error { background: rgba(244, 67, 54, 0.3); }
+        .status.info { background: rgba(33, 150, 243, 0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ בדיקת מערכת הגנה מפני קליקים מזויפים</h1>
+        
+        <div id="status" class="status info">
+            🔄 מאתחל מערכת מעקב...
+        </div>
+        
+        <div>
+            <h3>בדיקות:</h3>
+            <button class="test-button" onclick="testClick()">🖱️ בדיקת קליק</button>
+            <button class="test-button" onclick="testForm()">📝 בדיקת טופס</button>
+            <button class="test-button" onclick="testScroll()">📜 בדיקת גלילה</button>
+            <button class="test-button" onclick="clearConsole()">🧹 נקה קונסול</button>
+        </div>
+        
+        <div>
+            <h3>פלט קונסול:</h3>
+            <div id="console" class="console-output">
+                מחכה לפעילות...
+            </div>
+        </div>
+        
+        <form id="testForm" style="margin-top: 20px;">
+            <h3>טופס בדיקה:</h3>
+            <input type="text" placeholder="שם" style="padding: 10px; margin: 5px;">
+            <input type="email" placeholder="אימייל" style="padding: 10px; margin: 5px;">
+            <button type="submit" class="test-button">שלח טופס</button>
+        </form>
+    </div>
+
+    <!-- התג שלנו -->
+    <script>
+        // Override console.log to show in our custom console
+        const originalLog = console.log;
+        const consoleDiv = document.getElementById('console');
+        const statusDiv = document.getElementById('status');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ');
+            consoleDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            
+            // Update status based on message
+            if (message.includes('✅')) {
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '✅ המערכת פועלת תקין!';
+            } else if (message.includes('❌')) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ שגיאה במערכת!';
+            }
+        };
+        
+        function testClick() {
+            console.log('🖱️ בדיקת קליק ידנית');
+        }
+        
+        function testForm() {
+            console.log('📝 בדיקת טופס ידנית');
+        }
+        
+        function testScroll() {
+            window.scrollBy(0, 100);
+            console.log('📜 בדיקת גלילה ידנית');
+        }
+        
+        function clearConsole() {
+            consoleDiv.innerHTML = 'קונסול נוקה...';
+        }
+        
+        // טופס
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('📝 טופס נשלח (בדיקה)');
+        });
+    </script>
+
+    <!-- הקוד שלנו לזיהוי קליקים מזויפים -->
+    <script>
+        // Fraud Detection Script - Test Version
+        (function() {
+            // Configuration
+            var config = {
+                apiUrl: 'https://click-fraud-backend.vercel.app/api/track',
+                onlyPaidTraffic: false, // Track all traffic
+                debug: true, // Enable debug mode
+                sendInterval: 10000 // 10 seconds for testing
+            };
+
+            // Debug logging
+            function debugLog(message, data) {
+                if (config.debug) {
+                    console.log('[Fraud Detection] ' + message, data || '');
+                }
+            }
+
+            debugLog('🚀 Fraud Detection Script Started');
+
+            // Session management
+            function getOrCreateSessionId() {
+                var sessionId = sessionStorage.getItem('fraud_detection_session');
+                if (!sessionId) {
+                    sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    sessionStorage.setItem('fraud_detection_session', sessionId);
+                }
+                return sessionId;
+            }
+
+            // Data collection
+            var trackingData = {
+                sessionId: getOrCreateSessionId(),
+                visitStart: new Date().toISOString(),
+                events: [],
+                mouseMovements: 0,
+                scrollDepth: 0,
+                userInteractions: []
+            };
+
+            debugLog('📊 Session ID:', trackingData.sessionId);
+
+            // Mouse movement tracking
+            var lastMouseMove = 0;
+            document.addEventListener('mousemove', function() {
+                var now = Date.now();
+                if (now - lastMouseMove > 100) {
+                    trackingData.mouseMovements++;
+                    lastMouseMove = now;
+                    if (trackingData.mouseMovements % 10 === 0) {
+                        debugLog('🖱️ Mouse movements: ' + trackingData.mouseMovements);
+                    }
+                }
+            });
+
+            // Scroll tracking
+            var maxScroll = 0;
+            window.addEventListener('scroll', function() {
+                var scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
+                if (scrollPercent > maxScroll) {
+                    maxScroll = scrollPercent;
+                    trackingData.scrollDepth = maxScroll;
+                    debugLog('📜 Scroll depth: ' + maxScroll + '%');
+                }
+            });
+
+            // Click tracking
+            document.addEventListener('click', function(e) {
+                var clickData = {
+                    timestamp: new Date().toISOString(),
+                    element: e.target.tagName,
+                    x: e.clientX,
+                    y: e.clientY
+                };
+                trackingData.userInteractions.push(clickData);
+                debugLog('👆 Click tracked:', clickData);
+            });
+
+            // Form submission tracking
+            document.addEventListener('submit', function(e) {
+                var formData = {
+                    timestamp: new Date().toISOString(),
+                    type: 'form_submit',
+                    action: e.target.action || 'unknown'
+                };
+                trackingData.userInteractions.push(formData);
+                debugLog('📝 Form submit tracked:', formData);
+            });
+
+            // Get URL parameters
+            function getUrlParameter(name) {
+                var urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(name);
+            }
+
+            // Send data to server
+            function sendTrackingData(eventType) {
+                var gclid = getUrlParameter('gclid');
+                var timeOnPage = Math.round((Date.now() - new Date(trackingData.visitStart).getTime()) / 1000);
+
+                var payload = {
+                    user_agent: navigator.userAgent,
+                    referrer: document.referrer,
+                    page: window.location.pathname,
+                    gclid: gclid,
+                    time_on_page: timeOnPage,
+                    visit_start: trackingData.visitStart,
+                    event_type: eventType,
+                    additional_data: {
+                        screen_width: screen.width,
+                        screen_height: screen.height,
+                        language: navigator.language,
+                        platform: navigator.platform,
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                        url: window.location.href,
+                        title: document.title,
+                        session_id: trackingData.sessionId,
+                        scroll_depth: trackingData.scrollDepth,
+                        mouse_movements: trackingData.mouseMovements,
+                        user_interactions: trackingData.userInteractions.slice(-10)
+                    }
+                };
+
+                debugLog('📤 Sending data to server:', payload);
+
+                // Send via fetch
+                if (typeof fetch !== 'undefined') {
+                    fetch(config.apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    }).then(function(response) {
+                        return response.json();
+                    }).then(function(data) {
+                        debugLog('✅ Server response:', data);
+                    }).catch(function(error) {
+                        debugLog('❌ Error sending data:', error);
+                    });
+                } else {
+                    debugLog('❌ Fetch not supported');
+                }
+            }
+
+            // Initial page view tracking
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    debugLog('📄 Page loaded, sending initial tracking');
+                    sendTrackingData('pageview');
+                });
+            } else {
+                debugLog('📄 Page already loaded, sending initial tracking');
+                sendTrackingData('pageview');
+            }
+
+            // Periodic data sending (every 10 seconds for testing)
+            setInterval(function() {
+                debugLog('⏰ Periodic data send');
+                sendTrackingData('periodic');
+            }, config.sendInterval);
+
+            debugLog('✅ Fraud Detection Script Initialized');
+        })();
+    </script>
+</body>
+</html> 

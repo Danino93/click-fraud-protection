@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת הטמעה מתקדמת - מערכת הגנה מפני קליקים מזויפים</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .status-card {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+        .status-indicator.online { background: #4CAF50; }
+        .status-indicator.offline { background: #f44336; }
+        .status-indicator.checking { background: #ff9800; animation: pulse 1s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .test-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .test-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #333;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.15);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stat-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .advanced-stats {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .advanced-stats h3 {
+            color: #FFD700;
+            margin-bottom: 15px;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .metric-name {
+            font-weight: bold;
+        }
+        .metric-value {
+            color: #90EE90;
+        }
+        .form-test {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .form-test input, .form-test textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .traffic-type {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .traffic-type.paid {
+            background: rgba(255, 193, 7, 0.3);
+            border: 2px solid #FFC107;
+        }
+        .traffic-type.organic {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ בדיקת הטמעה מתקדמת</h1>
+            <p>מערכת הגנה מפני קליקים מזויפים - מותאם לפרויקט</p>
+        </div>
+        
+        <div class="status-card">
+            <h3>📊 מצב המערכת</h3>
+            <p id="system-status">
+                🔄 מאתחל מערכת...
+                <span id="status-indicator" class="status-indicator checking"></span>
+            </p>
+            <p id="server-status">
+                🌐 שרת: בודק חיבור...
+                <span id="server-indicator" class="status-indicator checking"></span>
+            </p>
+            <div id="traffic-type" class="traffic-type">
+                🔍 בודק סוג תעבורה...
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>🖱️ קליקים</h4>
+                <div id="click-count" class="stat-number">0</div>
+                <p>קליקים שנרשמו</p>
+                <small id="click-variance">שונות דפוס: -</small>
+            </div>
+            <div class="stat-card">
+                <h4>📜 גלילה</h4>
+                <div id="scroll-depth" class="stat-number">0%</div>
+                <p>עומק גלילה מקסימלי</p>
+                <small id="scroll-score">ציון התנהגות: -</small>
+            </div>
+            <div class="stat-card">
+                <h4>🖱️ תנועות עכבר</h4>
+                <div id="mouse-movements" class="stat-number">0</div>
+                <p>תנועות עכבר</p>
+                <small id="mouse-entropy">אנטרופיה: -</small>
+            </div>
+            <div class="stat-card">
+                <h4>⌨️ הקלדות</h4>
+                <div id="keystroke-count" class="stat-number">0</div>
+                <p>מקשים שנלחצו</p>
+                <small id="keystroke-rate">קצב: -</small>
+            </div>
+            <div class="stat-card">
+                <h4>⏱️ זמן בעמוד</h4>
+                <div id="time-on-page" class="stat-number">0s</div>
+                <p>זמן מתחילת הביקור</p>
+            </div>
+            <div class="stat-card">
+                <h4>🎯 פוקוס</h4>
+                <div id="focus-ratio" class="stat-number">-</div>
+                <p>יחס פוקוס/blur</p>
+            </div>
+        </div>
+        
+        <div class="advanced-stats">
+            <h3>🤖 מטריקות מתקדמות לזיהוי בוטים</h3>
+            <div class="metric-row">
+                <span class="metric-name">קצב תנועות עכבר:</span>
+                <span class="metric-value" id="mouse-rate">-</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">קצב קליקים:</span>
+                <span class="metric-value" id="click-rate">-</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">גיוון אינטראקציות:</span>
+                <span class="metric-value" id="interaction-diversity">-</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">ציון מעורבות בטפסים:</span>
+                <span class="metric-value" id="form-engagement">-</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">זמן מאז פעילות אחרונה:</span>
+                <span class="metric-value" id="last-activity">-</span>
+            </div>
+        </div>
+        
+        <div class="advanced-stats">
+            <h3>🔍 כללי זיהוי חדשים</h3>
+            <div class="metric-row">
+                <span class="metric-name">קליקים מהירים זוהו:</span>
+                <span class="metric-value" id="rapid-clicks">-</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">קליקים מרובים (5 דק'):</span>
+                <span class="metric-value" id="multiple-clicks-5">-</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">קליקים מרובים (10 דק'):</span>
+                <span class="metric-value" id="multiple-clicks-10">-</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">קליקים מרובים (30 דק'):</span>
+                <span class="metric-value" id="multiple-clicks-30">-</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">יחס המרה:</span>
+                <span class="metric-value" id="conversion-rate">-</span>
+            </div>
+        </div>
+        
+        <div class="test-buttons">
+            <button class="test-button" onclick="testClick()">🖱️ בדיקת קליק</button>
+            <button class="test-button" onclick="testScroll()">📜 בדיקת גלילה</button>
+            <button class="test-button" onclick="testManualSend()">📤 שליחה ידנית</button>
+            <button class="test-button" onclick="showStats()">📊 סטטיסטיקות בסיסיות</button>
+            <button class="test-button" onclick="showAdvancedStats()">🤖 סטטיסטיקות מתקדמות</button>
+            <button class="test-button" onclick="clearConsole()">🧹 נקה קונסול</button>
+            <button class="test-button" onclick="toggleDebug()">🔧 החלף דיבוג</button>
+            <button class="test-button" onclick="simulateBot()">🤖 דמה בוט</button>
+            <button class="test-button" onclick="testRapidClicks()">⚡ בדיקת קליקים מהירים</button>
+            <button class="test-button" onclick="testConversion()">💰 בדיקת המרה</button>
+            <button class="test-button" onclick="checkDetectionRules()">🔍 בדוק כללי זיהוי</button>
+        </div>
+        
+        <div class="form-test">
+            <h3>📝 בדיקת טופס (לבדיקת מעורבות)</h3>
+            <form id="test-form">
+                <input type="text" placeholder="שם מלא" required>
+                <input type="email" placeholder="כתובת אימייל" required>
+                <input type="tel" placeholder="טלפון" required>
+                <textarea placeholder="הודעה" rows="3"></textarea>
+                <button type="submit" class="test-button">שלח טופס</button>
+            </form>
+        </div>
+        
+        <div>
+            <h3>🖥️ פלט קונסול</h3>
+            <div id="console" class="console-output">
+                מחכה לפעילות המערכת...
+            </div>
+        </div>
+    </div>
+
+    <!-- הסקריפט שלנו להגנה מפני קליקים מזויפים -->
+    <script src="fraud-detection.js"></script>
+    
+    <!-- סקריפט הבדיקה המתקדם -->
+    <script>
+        // Override console.log to show in our custom console
+        const originalLog = console.log;
+        const consoleDiv = document.getElementById('console');
+        const systemStatus = document.getElementById('system-status');
+        const systemIndicator = document.getElementById('status-indicator');
+        const serverStatus = document.getElementById('server-status');
+        const serverIndicator = document.getElementById('server-indicator');
+        const trafficTypeDiv = document.getElementById('traffic-type');
+        
+        let systemOnline = false;
+        let serverOnline = false;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ');
+            const timestamp = new Date().toLocaleTimeString('he-IL');
+            consoleDiv.innerHTML += '<div>' + timestamp + ': ' + message + '</div>';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            
+            // Update status based on message
+            if (message.includes('🚀 מאתחל מערכת הגנה מתקדמת')) {
+                systemStatus.innerHTML = '✅ מערכת מתקדמת פעילה <span id="status-indicator" class="status-indicator online"></span>';
+                systemOnline = true;
+            }
+            
+            if (message.includes('🎯 סוג תעבורה:')) {
+                const isPaid = message.includes('ממומנת');
+                trafficTypeDiv.className = 'traffic-type ' + (isPaid ? 'paid' : 'organic');
+                trafficTypeDiv.innerHTML = message.split('🎯 ')[1];
+            }
+            
+            if (message.includes('✅ תגובת שרת')) {
+                serverStatus.innerHTML = '✅ שרת מחובר <span id="server-indicator" class="status-indicator online"></span>';
+                serverOnline = true;
+            }
+            
+            if (message.includes('❌ שגיאה בשליחה')) {
+                serverStatus.innerHTML = '❌ שרת לא זמין <span id="server-indicator" class="status-indicator offline"></span>';
+                serverOnline = false;
+            }
+        };
+        
+        // Test functions
+        function testClick() {
+            console.log('🖱️ בדיקת קליק ידנית - מדמה קליק משתמש');
+        }
+        
+        function testScroll() {
+            window.scrollBy(0, 200);
+            console.log('📜 בדיקת גלילה ידנית - גללתי 200px');
+        }
+        
+        function testManualSend() {
+            if (window.FraudDetection) {
+                window.FraudDetection.sendData('manual_test');
+                console.log('📤 שליחה ידנית לשרת');
+            } else {
+                console.log('❌ מערכת הגנה לא זמינה');
+            }
+        }
+        
+        function showStats() {
+            if (window.FraudDetection) {
+                const stats = window.FraudDetection.getStats();
+                console.log('📊 סטטיסטיקות בסיסיות:', stats);
+            } else {
+                console.log('❌ מערכת הגנה לא זמינה');
+            }
+        }
+        
+        function showAdvancedStats() {
+            if (window.FraudDetection) {
+                const advancedStats = window.FraudDetection.getAdvancedStats();
+                console.log('🤖 סטטיסטיקות מתקדמות:', advancedStats);
+            } else {
+                console.log('❌ מערכת הגנה לא זמינה');
+            }
+        }
+        
+        function clearConsole() {
+            consoleDiv.innerHTML = 'קונסול נוקה...';
+        }
+        
+        function toggleDebug() {
+            if (window.FraudDetection) {
+                const currentMode = window.FraudDetection.config.DEBUG_MODE;
+                window.FraudDetection.config.DEBUG_MODE = !currentMode;
+                console.log('🔧 מצב דיבוג שונה ל: ' + (!currentMode ? 'פעיל' : 'כבוי'));
+            }
+        }
+        
+        function simulateBot() {
+            console.log('🤖 מדמה התנהגות בוט...');
+            
+            // קליקים מהירים ברצף (חשוד)
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    document.body.click();
+                }, i * 100);
+            }
+            
+            console.log('🤖 סימולציה הושלמה - בדוק את המטריקות המתקדמות');
+        }
+        
+        function testRapidClicks() {
+            console.log('⚡ בודק זיהוי קליקים מהירים...');
+            
+            // 10 קליקים מהירים ברצף
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    document.body.click();
+                }, i * 50); // 50ms בין קליקים - מהיר מאוד!
+            }
+            
+            setTimeout(() => {
+                if (window.FraudDetection) {
+                    const stats = window.FraudDetection.getAdvancedStats();
+                    console.log('⚡ קליקים מהירים זוהו: ' + stats.detectionMetrics.rapidClicksDetected);
+                }
+            }, 1000);
+        }
+        
+        function testConversion() {
+            if (window.FraudDetection) {
+                // דמה כמה סוגי המרות
+                window.FraudDetection.recordPurchase(150);
+                window.FraudDetection.recordSignup();
+                window.FraudDetection.recordFormSubmit('contact');
+                
+                const stats = window.FraudDetection.getAdvancedStats();
+                console.log('💰 יחס המרה נוכחי: ' + stats.detectionMetrics.conversionRate.toFixed(2) + '%');
+                console.log('💰 אירועי המרה: ', stats.detectionMetrics.conversionEvents);
+            } else {
+                console.log('❌ מערכת הגנה לא זמינה');
+            }
+        }
+        
+        function checkDetectionRules() {
+            if (window.FraudDetection) {
+                const result = window.FraudDetection.checkDetectionRules();
+                
+                if (result.suspicious) {
+                    console.log('⚠️ זוהתה פעילות חשודה!');
+                    result.warnings.forEach(warning => {
+                        console.log('🚨 ' + warning);
+                    });
+                } else {
+                    console.log('✅ לא זוהתה פעילות חשודה');
+                }
+                
+                console.log('📊 מטריקות זיהוי מלאות:', result.metrics);
+            } else {
+                console.log('❌ מערכת הגנה לא זמינה');
+            }
+        }
+        
+        // Form handling
+        document.getElementById('test-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('📝 טופס נשלח (בדיקה) - לא נשלח באמת');
+        });
+        
+        // Update stats display
+        function updateStatsDisplay() {
+            if (window.FraudDetection) {
+                const stats = window.FraudDetection.getStats();
+                const advancedStats = window.FraudDetection.getAdvancedStats();
+                
+                // Basic stats
+                document.getElementById('click-count').textContent = stats.clickCount;
+                document.getElementById('scroll-depth').textContent = stats.scrollDepth + '%';
+                document.getElementById('mouse-movements').textContent = stats.mouseMovements;
+                document.getElementById('keystroke-count').textContent = stats.keystrokes;
+                document.getElementById('time-on-page').textContent = stats.timeOnPage + 's';
+                
+                // Advanced metrics
+                if (advancedStats.behaviorPatterns) {
+                    const patterns = advancedStats.behaviorPatterns;
+                    
+                    document.getElementById('click-variance').textContent = 
+                        'שונות דפוס: ' + patterns.clickPatternVariance.toFixed(1);
+                    
+                    document.getElementById('scroll-score').textContent = 
+                        'ציון התנהגות: ' + patterns.scrollBehaviorScore.toFixed(2);
+                    
+                    document.getElementById('mouse-entropy').textContent = 
+                        'אנטרופיה: ' + patterns.mouseMovementEntropy.toFixed(2);
+                    
+                    document.getElementById('keystroke-rate').textContent = 
+                        'קצב: ' + stats.advancedMetrics.keystroke_rate.toFixed(2) + '/s';
+                    
+                    document.getElementById('focus-ratio').textContent = 
+                        stats.advancedMetrics.focus_blur_ratio.toFixed(2);
+                    
+                    // Advanced metrics
+                    document.getElementById('mouse-rate').textContent = 
+                        stats.advancedMetrics.mouse_movement_rate.toFixed(2) + ' תנועות/שניה';
+                    
+                    document.getElementById('click-rate').textContent = 
+                        stats.advancedMetrics.click_rate.toFixed(2) + ' קליקים/שניה';
+                    
+                    document.getElementById('interaction-diversity').textContent = 
+                        patterns.interactionDiversity + ' סוגים';
+                    
+                    document.getElementById('form-engagement').textContent = 
+                        patterns.formEngagementScore.toFixed(1) + ' שניות/שדה';
+                    
+                    document.getElementById('last-activity').textContent = 
+                        stats.advancedMetrics.time_since_last_activity + ' שניות';
+                }
+                
+                // הכללים החדשים
+                if (advancedStats.detectionMetrics) {
+                    const detection = advancedStats.detectionMetrics;
+                    
+                    document.getElementById('rapid-clicks').textContent = detection.rapidClicksDetected;
+                    document.getElementById('multiple-clicks-5').textContent = detection.multipleClicks5min;
+                    document.getElementById('multiple-clicks-10').textContent = detection.multipleClicks10min;
+                    document.getElementById('multiple-clicks-30').textContent = detection.multipleClicks30min;
+                    document.getElementById('conversion-rate').textContent = detection.conversionRate.toFixed(2) + '%';
+                }
+            }
+        }
+        
+        // Update stats every second
+        setInterval(updateStatsDisplay, 1000);
+        
+        // Initial message
+        setTimeout(() => {
+            console.log('🎉 דף בדיקה מתקדם טעון - התחל לבדוק את המערכת!');
+            console.log('🤖 נסה את כפתור "דמה בוט" לבדיקת זיהוי התנהגות חשודה');
+        }, 500);
+        
+        // Add some mouse movement tracking for demo
+        let mouseMovementCount = 0;
+        document.addEventListener('mousemove', function() {
+            mouseMovementCount++;
+        });
+    </script>
+</body>
+</html> 
