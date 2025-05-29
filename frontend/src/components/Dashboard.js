@@ -16,6 +16,7 @@ function Dashboard() {
   const [detectionRules, setDetectionRules] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [serverStatus, setServerStatus] = useState('checking');
+  const [isResetting, setIsResetting] = useState(false);
   
   useEffect(() => {
     fetchDashboardData();
@@ -86,6 +87,46 @@ function Dashboard() {
     return lastUpdate.toLocaleTimeString('he-IL');
   };
   
+  const resetDashboard = async () => {
+    // אישור מהמשתמש
+    const confirmed = window.confirm(
+      '⚠️ האם אתה בטוח שברצונך לאפס את כל נתוני הדשבורד?\n\n' +
+      'פעולה זו תמחק:\n' +
+      '• כל הקליקים (ממומנים ואורגניים)\n' +
+      '• כל הקליקים החשודים\n' +
+      '• כל ה-IP החסומים\n\n' +
+      'לא ניתן לבטל פעולה זו!'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      setIsResetting(true);
+      
+      const response = await axios.post(`${API_URL}/reset-dashboard`, {}, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || 'temp-token'}`
+        }
+      });
+      
+      if (response.data.success) {
+        // הצגת הודעת הצלחה
+        alert('🎉 איפוס הדשבורד הושלם בהצלחה!\n\nכל הנתונים נמחקו והמערכת מוכנה להתחיל מחדש.');
+        
+        // רענון הנתונים
+        await fetchDashboardData();
+      } else {
+        throw new Error(response.data.error || 'Unknown error');
+      }
+      
+    } catch (error) {
+      console.error('Error resetting dashboard:', error);
+      alert('❌ שגיאה באיפוס הדשבורד:\n' + (error.response?.data?.error || error.message));
+    } finally {
+      setIsResetting(false);
+    }
+  };
+  
   return (
     <div className="dashboard">
       <div className="dashboard-header">
@@ -95,20 +136,38 @@ function Dashboard() {
       
       <div className="dashboard-content">
         <div className="refresh-section">
-          <button 
-            className="refresh-button" 
-            onClick={fetchDashboardData} 
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <span className="loading-spinner"></span>
-                טוען נתונים...
-              </>
-            ) : (
-              '🔄 רענן נתונים'
-            )}
-          </button>
+          <div className="action-buttons">
+            <button 
+              className="refresh-button" 
+              onClick={fetchDashboardData} 
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <span className="loading-spinner"></span>
+                  טוען נתונים...
+                </>
+              ) : (
+                '🔄 רענן נתונים'
+              )}
+            </button>
+            
+            <button 
+              className="reset-button" 
+              onClick={resetDashboard} 
+              disabled={isLoading || isResetting}
+            >
+              {isResetting ? (
+                <>
+                  <span className="loading-spinner"></span>
+                  מאפס...
+                </>
+              ) : (
+                '🗑️ איפוס דשבורד'
+              )}
+            </button>
+          </div>
+          
           <div className="last-update">
             עדכון אחרון: {formatLastUpdate()}
             <span className={`status-indicator ${serverStatus}`}></span>

@@ -482,61 +482,69 @@ app.post('/api/track', async (req, res) => {
     
     console.log(`🔍 Click type: ${clickType}${isPaidClick ? ` (gclid: ${gclid})` : ''}`);
     
-    // שמירת הנתונים במסד הנתונים
-    const { data, error } = await supabase
-      .from('clicks')
-      .insert([
-        {
-          ip_address: clientIP,
-          user_agent,
-          referrer,
-          page,
-          gclid,
-          time_on_page,
-          visit_start,
-          event_type: event_type || 'pageview',
-          click_type: clickType,
-          is_paid: isPaidClick,
-          additional_data,
-          created_at: new Date()
-        }
-      ]);
+    // שמירה רק של קליקים אמיתיים (לא periodic או page_unload)
+    const shouldSaveAsClick = event_type === 'pageview' || event_type === 'click';
     
-    if (error) {
-      console.error('❌ Database error:', error);
-      throw error;
+    if (shouldSaveAsClick) {
+      // שמירת הנתונים במסד הנתונים כקליק
+      const { data, error } = await supabase
+        .from('clicks')
+        .insert([
+          {
+            ip_address: clientIP,
+            user_agent,
+            referrer,
+            page,
+            gclid,
+            time_on_page,
+            visit_start,
+            event_type: event_type || 'pageview',
+            click_type: clickType,
+            is_paid: isPaidClick,
+            additional_data,
+            created_at: new Date()
+          }
+        ]);
+      
+      if (error) {
+        console.error('❌ Database error:', error);
+        throw error;
+      }
+      
+      console.log('✅ Click data saved successfully');
+      
+      // בדיקה האם הקליק חשוד (רק לקליקים אמיתיים)
+      const isSuspicious = await fraudDetectionModule.detectFraudClick({
+        ip_address: clientIP,
+        user_agent, 
+        referrer, 
+        page, 
+        gclid, 
+        time_on_page,
+        visit_start, 
+        additional_data,
+        is_paid: isPaidClick
+      });
+      
+      console.log('🔍 Fraud detection result:', isSuspicious);
+      
+      // חסימת IP אוטומטית רק לקליקים ממומנים חשודים!
+      // להפעלת חסימה אוטומטית: הגדר AUTO_BLOCK_SUSPICIOUS=true בקובץ .env
+      if (isSuspicious && isPaidClick && process.env.AUTO_BLOCK_SUSPICIOUS === 'true') {
+        console.log('🚫 Blocking suspicious PAID click IP:', clientIP);
+        await blockingModule.blockIP(clientIP, 'Automatic - Suspicious paid click activity', null);
+        await blockingModule.updateGoogleAdsBlockedList(oauth2Client);
+      } else if (isSuspicious && isPaidClick) {
+        console.log('⚠️ Suspicious PAID click detected (auto-blocking disabled):', clientIP);
+      } else if (isSuspicious && !isPaidClick) {
+        console.log('⚠️ Suspicious ORGANIC click detected (NOT blocking - organic clicks are never blocked):', clientIP);
+      }
+      
+      res.json({ success: true, tracked: true, suspicious: isSuspicious });
+    } else {
+      console.log('📊 Periodic/tracking data received (not counted as click)');
+      res.json({ success: true, tracked: true, suspicious: false, note: 'Tracking data only' });
     }
-    
-    console.log('✅ Click data saved successfully');
-    
-    // בדיקה האם הקליק חשוד
-    const isSuspicious = await fraudDetectionModule.detectFraudClick({
-      ip_address: clientIP,
-      user_agent, 
-      referrer, 
-      page, 
-      gclid, 
-      time_on_page,
-      visit_start, 
-      additional_data,
-      is_paid: isPaidClick
-    });
-    
-    console.log('🔍 Fraud detection result:', isSuspicious);
-    
-    // חסימת IP אוטומטית רק לקליקים ממומנים חשודים!
-    // להפעלת חסימה אוטומטית: הגדר AUTO_BLOCK_SUSPICIOUS=true בקובץ .env
-    if (isSuspicious && isPaidClick && process.env.AUTO_BLOCK_SUSPICIOUS === 'true') {
-      console.log('🚫 Blocking suspicious PAID click IP:', clientIP);
-      await blockingModule.blockIP(clientIP, 'Automatic - Suspicious paid click activity', null);
-      await blockingModule.updateGoogleAdsBlockedList(oauth2Client);
-    } else if (isSuspicious && isPaidClick) {
-      console.log('⚠️ Suspicious PAID click detected (auto-blocking disabled):', clientIP);
-    } else if (isSuspicious && !isPaidClick) {
-      console.log('⚠️ Suspicious ORGANIC click detected (NOT blocking - organic clicks are never blocked):', clientIP);
-    }
-    
-    res.json({ success: true, tracked: true, suspicious: isSuspicious });
   } catch (error) {
     console.error('❌ Error tracking click:', error);
     res.status(500).json({ error: 'Failed to track click', details: error.message });
@@ -560,6 +568,56 @@ app.get('/api/check-ip/:ip', async (req, res) => {
   } catch (error) {
     console.error('Error checking IP:', error);
     res.status(500).json({ error: 'Failed to check IP' });
+  }
+});
+
+// נתיב לאיפוס נתוני הדשבורד
+app.post('/api/reset-dashboard', authenticateToken, async (req, res) => {
+  try {
+    console.log('🗑️ מתחיל איפוס דשבורד...');
+    
+    // מחיקת כל הקליקים
+    const { error: clicksError } = await supabase
+      .from('clicks')
+      .delete()
+      .neq('id', 0); // מוחק הכל
+      
+    if (clicksError) throw clicksError;
+    console.log('✅ קליקים נמחקו');
+    
+    // מחיקת קליקים חשודים
+    const { error: suspiciousError } = await supabase
+      .from('suspicious_clicks')
+      .delete()
+      .neq('id', 0); // מוחק הכל
+      
+    if (suspiciousError) throw suspiciousError;
+    console.log('✅ קליקים חשודים נמחקו');
+    
+    // מחיקת IP חסומים (אופציונלי)
+    const { error: blockedError } = await supabase
+      .from('blocked_ips')
+      .delete()
+      .neq('id', 0); // מוחק הכל
+      
+    if (blockedError) throw blockedError;
+    console.log('✅ IP חסומים נמחקו');
+    
+    console.log('🎉 איפוס דשבורד הושלם בהצלחה!');
+    
+    res.json({ 
+      success: true, 
+      message: 'Dashboard reset successfully',
+      details: {
+        clicks_deleted: true,
+        suspicious_clicks_deleted: true,
+        blocked_ips_deleted: true
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ שגיאה באיפוס:', error);
+    res.status(500).json({ error: 'Failed to reset dashboard', details: error.message });
   }
 });
 

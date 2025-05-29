@@ -30,10 +30,10 @@
         DEBUG_MODE: true, // שנה ל-false בפרודקשן
         
         // כל כמה זמן לשלוח נתונים (במילישניות)
-        SEND_INTERVAL: 30000, // 30 שניות
+        SEND_INTERVAL: 60000, // 60 שניות (הוגדל מ-30)
         
         // מינימום זמן בעמוד לפני שליחה (במילישניות)
-        MIN_TIME_ON_PAGE: 2000, // 2 שניות
+        MIN_TIME_ON_PAGE: 3000, // 3 שניות (הוגדל מ-2)
         
         // מקסימום נתונים לשמור בזיכרון
         MAX_EVENTS: 50,
@@ -45,6 +45,10 @@
         FORM_TRACKING: true, // מעקב אחר טפסים
         FOCUS_TRACKING: true // מעקב אחר פוקוס חלון
     };
+    
+    // דגל למניעת שליחה כפולה
+    var lastSentTime = 0;
+    var DUPLICATE_PREVENTION_WINDOW = 10000; // 10 שניות
     
     // 🔧 פונקציות עזר
     function debugLog(message, data) {
@@ -83,7 +87,17 @@
     }
     
     function isPaidTraffic() {
-        return !!getGclid();
+        var gclid = getGclid();
+        var result = !!gclid;
+        
+        debugLog('🔍 בדיקת סוג תעבורה:', {
+            gclid: gclid || 'ריק',
+            isPaid: result,
+            url: window.location.href,
+            referrer: document.referrer || 'ריק'
+        });
+        
+        return result;
     }
     
     // 📱 איסוף מידע מפורט על המכשיר והדפדפן (לכללי זיהוי מתקדמים)
@@ -651,6 +665,13 @@
     
     // 📤 שליחת נתונים מתקדמת לשרת
     function sendDataToServer(eventType) {
+        // מניעת שליחה כפולה
+        var now = Date.now();
+        if (now - lastSentTime < DUPLICATE_PREVENTION_WINDOW && eventType !== 'page_unload') {
+            debugLog('⏭️ דילוג - שליחה כפולה נמנעה (אחרי ' + Math.round((now - lastSentTime) / 1000) + ' שניות)');
+            return;
+        }
+        
         // בדיקה אם צריך לעקוב רק אחרי תעבורה ממומנת
         if (CONFIG.ONLY_PAID_TRAFFIC && !isPaidTraffic()) {
             debugLog('⏭️ דילוג - לא תעבורה ממומנת');
@@ -659,7 +680,7 @@
         
         // בדיקה של זמן מינימלי בעמוד
         if (trackingData.getTimeOnPage() < CONFIG.MIN_TIME_ON_PAGE / 1000) {
-            debugLog('⏭️ דילוג - זמן קצר מדי בעמוד');
+            debugLog('⏭️ דילוג - זמן קצר מדי בעמוד (נדרש: ' + (CONFIG.MIN_TIME_ON_PAGE / 1000) + ' שניות)');
             return;
         }
         
@@ -739,6 +760,9 @@
                 return response.json();
             })
             .then(function(data) {
+                // עדכון זמן שליחה אחרון אחרי הצלחה
+                lastSentTime = now;
+                
                 debugLog('✅ תגובת שרת', data);
                 
                 // הודעות מפורטות על התגובה
