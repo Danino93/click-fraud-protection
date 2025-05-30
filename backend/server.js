@@ -29,7 +29,6 @@ app.use(cors({
       'http://localhost:3001', 
       'https://ashaf-d.com',
       'http://ashaf-d.com',
-      'https://click-fraud.vercel.app',
       // הוסף כאן את הדומיין של הפרונטאנד בוורסל כשתקבל אותו
       // 'https://your-frontend-app.vercel.app'
     ];
@@ -284,8 +283,7 @@ app.get('/api/clicks', authenticateToken, async (req, res) => {
     let query = supabase
       .from('clicks')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
+      .order('created_at', { ascending: false });
     
     // סינון לפי סוג קליק
     if (type === 'paid') {
@@ -409,8 +407,7 @@ app.get('/api/suspicious-clicks', authenticateToken, async (req, res) => {
     const { data, error } = await supabase
       .from('suspicious_clicks')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
+      .order('created_at', { ascending: false });
     
     if (error) throw error;
     
@@ -488,60 +485,60 @@ app.post('/api/track', async (req, res) => {
     
     if (shouldSaveAsClick) {
       // שמירת הנתונים במסד הנתונים כקליק
-      const { data, error } = await supabase
-        .from('clicks')
-        .insert([
-          {
-            ip_address: clientIP,
-            user_agent,
-            referrer,
-            page,
-            gclid,
-            time_on_page,
-            visit_start,
-            event_type: event_type || 'pageview',
+    const { data, error } = await supabase
+      .from('clicks')
+      .insert([
+        {
+          ip_address: clientIP,
+          user_agent,
+          referrer,
+          page,
+          gclid,
+          time_on_page,
+          visit_start,
+          event_type: event_type || 'pageview',
             click_type: clickType,
             is_paid: isPaidClick,
-            additional_data,
-            created_at: new Date()
-          }
-        ]);
-      
-      if (error) {
-        console.error('❌ Database error:', error);
-        throw error;
-      }
-      
-      console.log('✅ Click data saved successfully');
-      
+          additional_data,
+          created_at: new Date()
+        }
+      ]);
+    
+    if (error) {
+      console.error('❌ Database error:', error);
+      throw error;
+    }
+    
+    console.log('✅ Click data saved successfully');
+    
       // בדיקה האם הקליק חשוד (רק לקליקים אמיתיים)
-      const isSuspicious = await fraudDetectionModule.detectFraudClick({
-        ip_address: clientIP,
-        user_agent, 
-        referrer, 
-        page, 
-        gclid, 
-        time_on_page,
-        visit_start, 
+    const isSuspicious = await fraudDetectionModule.detectFraudClick({
+      ip_address: clientIP,
+      user_agent, 
+      referrer, 
+      page, 
+      gclid, 
+      time_on_page,
+      visit_start, 
         additional_data,
         is_paid: isPaidClick
-      });
-      
-      console.log('🔍 Fraud detection result:', isSuspicious);
-      
+    });
+    
+    console.log('🔍 Fraud detection result:', isSuspicious);
+    
       // חסימת IP אוטומטית רק לקליקים ממומנים חשודים!
       // להפעלת חסימה אוטומטית: הגדר AUTO_BLOCK_SUSPICIOUS=true בקובץ .env
       if (isSuspicious && isPaidClick && process.env.AUTO_BLOCK_SUSPICIOUS === 'true') {
         console.log('🚫 Blocking suspicious PAID click IP:', clientIP);
         await blockingModule.blockIP(clientIP, 'Automatic - Suspicious paid click activity', null);
-        await blockingModule.updateGoogleAdsBlockedList(oauth2Client);
+      await blockingModule.updateGoogleAdsBlockedList(oauth2Client);
       } else if (isSuspicious && isPaidClick) {
         console.log('⚠️ Suspicious PAID click detected (auto-blocking disabled):', clientIP);
       } else if (isSuspicious && !isPaidClick) {
         console.log('⚠️ Suspicious ORGANIC click detected (NOT blocking - organic clicks are never blocked):', clientIP);
-      }
-      
-      res.json({ success: true, tracked: true, suspicious: isSuspicious });
+    }
+    
+    res.json({ success: true, tracked: true, suspicious: isSuspicious });
     } else {
       console.log('📊 Periodic/tracking data received (not counted as click)');
       res.json({ success: true, tracked: true, suspicious: false, note: 'Tracking data only' });

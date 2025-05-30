@@ -165,9 +165,9 @@ function Dashboard() {
               ) : (
                 '🗑️ איפוס דשבורד'
               )}
-            </button>
-          </div>
-          
+        </button>
+      </div>
+      
           <div className="last-update">
             עדכון אחרון: {formatLastUpdate()}
             <span className={`status-indicator ${serverStatus}`}></span>
