@@ -29,6 +29,7 @@ app.use(cors({
       'http://localhost:3001', 
       'https://ashaf-d.com',
       'http://ashaf-d.com',
+      'https://click-fraud.vercel.app',
       // הוסף כאן את הדומיין של הפרונטאנד בוורסל כשתקבל אותו
       // 'https://your-frontend-app.vercel.app'
     ];
